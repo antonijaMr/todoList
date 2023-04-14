@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import symbolicateStackTrace from 'react-native/Libraries/Core/Devtools/symbolicateStackTrace';
 import Task from './Tasks';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, setDoc, doc, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, setDoc, doc, collection, addDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 export default function TaskList() {
     const firebaseConfig = {
@@ -17,43 +17,60 @@ export default function TaskList() {
 
     initializeApp(firebaseConfig);
 
+    useEffect(() => {
+        const firestore = getFirestore();
+        const taskCollectionRef = collection(firestore, "users", "user_id", "tasks");
+
+        const unsubscribe = onSnapshot(taskCollectionRef, (querySnapshot) => {
+            const tasksData = [];
+            querySnapshot.forEach((doc) => {
+                tasksData.push({ id: doc.id, ...doc.data() });
+            });
+            setTasks(tasksData);
+        });
+
+        return unsubscribe;
+    }, []);
+
+
 
 
     const [task, setTask] = useState();
-    const [taskItems, setTaskItems] = useState([]);
+    const [tasks, setTasks] = useState([]);
 
 
-        const handleAddTask = async () => {
-            Keyboard.dismiss();
 
-            const firestore = getFirestore();
+    const handleAddTask = async () => {
+        Keyboard.dismiss();
 
-            const userDocRef = doc(firestore, "users", "user_id");
-            const taskCollectionRef = collection(userDocRef, "tasks");
+        const firestore = getFirestore();
 
-            try {
-                await addDoc(taskCollectionRef, {
-                    taskName: task,
-                    done: false,
-                });
+        const userDocRef = doc(firestore, "users", "user_id");
+        const taskCollectionRef = collection(userDocRef, "tasks");
 
-                // add the new task to the taskItems state
-                setTaskItems([...taskItems, task]);
+        try {
+            await addDoc(taskCollectionRef, {
+                taskName: task,
+                done: false,
+            });
 
-                // reset the task input field
-                setTask(null);
-            } catch (error) {
-                console.log("Error adding document: ", error);
-            }
+            setTask(null);
+        } catch (error) {
+            console.log("Error adding document: ", error);
         }
+    }
 
+    const completeTask = async (taskId) => {
+        const firestore = getFirestore();
+        const taskDocRef = doc(firestore, "users", "user_id", "tasks", taskId);
 
-    const completeTask = (index) => {
-        let itemsCopy = [...taskItems];
-        //splice removes one item from array sa indeksom index
-        itemsCopy.splice(index, 1);
-        setTaskItems(itemsCopy);
-
+        try {
+            await updateDoc(taskDocRef, {
+                done: true
+            });
+        } catch (error) {
+            console.log("Error updating document: ", error);
+        }
     }
 
     return (
@@ -63,17 +80,12 @@ export default function TaskList() {
 
                 <View style={styles.items}>
                     {
-                        taskItems.map((item, index) => {
-                            return (
-                                <TouchableOpacity key={index} onPress={() => completeTask(index)}>
-                                    <Task text={item}></Task>
-                                </TouchableOpacity>
-
-                            )
-                        })
+                        tasks.filter(task => !task.done).map((task) =>
+                            <TouchableOpacity key={task.id} onPress={() => completeTask(task.id)}>
+                                <Task text={task.taskName}></Task>
+                            </TouchableOpacity>
+                        )
                     }
-
-                    {/* tasks */}
                 </View>
             </View>
 
