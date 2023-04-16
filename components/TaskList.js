@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Task from './Tasks';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, setDoc, doc, collection, addDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 export default function TaskList() {
-    let i = 0;
-    let j = 0;
     const firebaseConfig = {
         apiKey: "AIzaSyA1Xd4RVJ8lCH_drWT_itiKr-QM3H68pHo",
         authDomain: "todoapp-2907c.firebaseapp.com",
@@ -24,18 +22,14 @@ export default function TaskList() {
         const taskCollectionRef = collection(firestore, "users", "user_id", "tasks");
 
         const unsubscribe = onSnapshot(taskCollectionRef, (querySnapshot) => {
-            ++i;
             const tasksData = [];
             querySnapshot.forEach((doc) => {
                 tasksData.push({ id: doc.id, ...doc.data() });
             });
 
-            console.log("i: " + i)
             setTemp(tasksData);
 
         });
-        ++j;
-        console.log("j: " + j)
 
         if (isEnabled) {
             setTasks(temp.filter(task => !task.done))
@@ -99,23 +93,26 @@ export default function TaskList() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.taskWrapper}>
+                <View style={styles.headerWrapper}>
                 <Text style={styles.sectionTitle}>Today tasks</Text>
-
                 <Switch
                     thumbColor={isEnabled ? 'white' : 'hotpink'}
                     onValueChange={toggleSwitch}
                     value={isEnabled}
                 />
-
-                <View style={styles.items}>
-                    {
-                        tasks.map((task) =>
-                            <TouchableOpacity key={task.id} onPress={() => completeTask(task.id)}>
-                                <Task text={task.taskName}></Task>
-                            </TouchableOpacity>
-                        )
-                    }
                 </View>
+                <ScrollView>
+
+                    <View style={styles.items}>
+                        {
+                            tasks.map((task) =>
+                                <TouchableOpacity key={task.id} onPress={() => completeTask(task.id)}>
+                                    <Task text={task.taskName}></Task>
+                                </TouchableOpacity>
+                            )
+                        }
+                    </View>
+                </ScrollView>
             </View>
 
             <KeyboardAvoidingView
@@ -140,15 +137,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'lightpink',
     },
+    headerWrapper: {
+        paddingTop: 10,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
     taskWrapper: {
         paddingTop: 80,
         paddingHorizontal: 20,
-
     },
     sectionTitle: {
         fontSize: 24,
         fontWeight: 'bold'
-
     },
     items: {
         marginTop: 30,
